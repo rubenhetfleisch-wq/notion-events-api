@@ -1,71 +1,87 @@
-export default {
-  async fetch(request, env) {
-    if (request.method === "OPTIONS") {
-      return new Response(null, {
-        headers: {
-          "access-control-allow-origin": "*",
-          "access-control-allow-methods": "GET, OPTIONS",
-          "access-control-allow-headers": "content-type",
-        },
-      });
-    }
+import { Client } from "@notionhq/client";
 
-    const url = new URL(request.url);
-    if (url.pathname !== "/events") {
-      return new Response("Not found", { status: 404 });
-    }
+export default async function handler(req, res) {
+  // Public read API
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-    const notionRes = await fetch(
-      ⁠ https://api.notion.com/v1/databases/${env.DATABASE_ID}/query ⁠,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": ⁠ Bearer ${env.NOTION_SECRET} ⁠,
-          "Notion-Version": "2022-06-28",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ page_size: 100 }),
-      }
-    );
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
 
-    if (!notionRes.ok) {
-      return new Response(await notionRes.text(), { status: notionRes.status });
-    }
-
-    const data = await notionRes.json();
-
-    const items = (data.results || [])
-      .map(p => {
-        const props = p.properties || {};
-
-        return {
-          id: p.id,
-          title: (props["name"]?.title || []).map(t => t.plain_text).join(""),
-          desc: (props["Description"]?.rich_text || []).map(t => t.plain_text).join(" "),
-          date: props["Event Date"]?.date || props["Date"]?.date || null,
-          region: props["Region"]?.select?.name || "",
-          url: props["url"]?.url || "",
-          image:
-            p.cover?.external?.url ||
-            p.cover?.file?.url ||
-            props["image"]?.files?.[0]?.external?.url ||
-            props["image"]?.files?.[0]?.file?.url ||
-            null,
-        };
-      })
-      // ✅ NUR nach Datum sortieren – kein Published-Filter
-      .sort((a, b) => {
-        const da = a.date?.start ? new Date(a.date.start).getTime() : Infinity;
-        const db = b.date?.start ? new Date(b.date.start).getTime() : Infinity;
-        return da - db;
-      });
-
-    return new Response(JSON.stringify({ items }), {
-      headers: {
-        "content-type": "application/json",
-        "access-control-allow-origin": "*",
-        "cache-control": "no-store",
-      },
+  try {
+    const notion = new Client({
+      auth: process.env.NOTION_TOKEN
     });
-  },
-};
+
+    const response = await notion.databases.query({
+      database_id: process.env.NOTION_DB_ID,
+      filter: {
+        property: "Published",
+        checkbox: { equals: true }
+      },
+      // ✅ echtes Datumsfeld
+      sorts: [
+        { property: "Date", direction: "ascending" }
+      ]
+    });
+
+    const items = response.results.map(page => {
+      /* ---------- IMAGE ---------- */
+      const files = page.properties.image?.files ?? [];
+
+      let image = null;
+      for (const f of files) {
+        if (f.type === "file" && f.file?.url) {
+          image = f.file.url;
+          break;
+        }
+        if (f.type === "external" && f.external?.url) {
+          image = f.external.url;
+          break;
+        }
+      }
+
+      /* ---------- DESCRIPTION ---------- */
+      const description =
+        page.properties.Description?.rich_text
+          ?.map(t => t.plain_text)
+          .join("") ?? "";
+
+      return {
+        // ✅ Title
+        title:
+          page.properties.name?.title?.[0]?.plain_text ?? "",
+
+        // ✅ Description
+        desc: description,
+
+        // ✅ Region
+        region:
+          page.properties.Region?.select?.name ?? "",
+
+        // ✅ URL
+        url:
+          page.properties.url?.url ?? "XXXXXX",
+
+        // ✅ Image (per row!)
+        image,
+
+        // ✅ Event Date
+        date: {
+          start:
+            page.properties.Date?.date?.start ?? null
+        },
+
+        // Optional
+        featured:
+          page.properties.Featured?.checkbox ?? false
+      };
+    });
+
+    return res.status(200).json({ items });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
