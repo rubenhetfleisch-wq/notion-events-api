@@ -21,13 +21,14 @@ export default async function handler(req, res) {
         property: "Published",
         checkbox: { equals: true }
       },
+      // ✅ echtes Datumsfeld
       sorts: [
         { property: "Date", direction: "ascending" }
       ]
     });
 
     const items = response.results.map(page => {
-      /* ---------- IMAGE (Files & media, robust) ---------- */
+      /* ---------- IMAGE ---------- */
       const files = page.properties.image?.files ?? [];
 
       let image = null;
@@ -44,7 +45,7 @@ export default async function handler(req, res) {
 
       /* ---------- DESCRIPTION ---------- */
       const description =
-        page.properties.description?.rich_text
+        page.properties.Description?.rich_text
           ?.map(t => t.plain_text)
           .join("") ?? "";
 
@@ -58,20 +59,19 @@ export default async function handler(req, res) {
 
         // ✅ Region
         region:
-          page.properties.region?.select?.name ?? "",
+          page.properties.Region?.select?.name ?? "",
 
-        // ✅ External link
+        // ✅ URL
         url:
-          page.properties.url?.url ?? "",
+          page.properties.url?.url ?? "XXXXXX",
 
-        // ✅ Image
+        // ✅ Image (per row!)
         image,
 
-        // ✅ Event date
+        // ✅ Event Date
         date: {
           start:
-            page.properties["Date"]?.date?.start ??
-            null
+            page.properties.Date?.date?.start ?? null
         },
 
         // Optional
