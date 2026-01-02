@@ -27,9 +27,8 @@ export default async function handler(req, res) {
     });
 
     const items = response.results.map(page => {
-      /* ---------- THUMBNAIL IMAGE ---------- */
-      const files =
-        page.properties["Thumbnail image"]?.files ?? [];
+      /* ---------- IMAGE (Files & media, robust) ---------- */
+      const files = page.properties.image?.files ?? [];
 
       let image = null;
       for (const f of files) {
@@ -43,36 +42,39 @@ export default async function handler(req, res) {
         }
       }
 
-      /* ---------- DESCRIPTION (FULL TEXT) ---------- */
+      /* ---------- DESCRIPTION ---------- */
       const description =
-        page.properties.Description?.rich_text
+        page.properties.description?.rich_text
           ?.map(t => t.plain_text)
           .join("") ?? "";
 
       return {
-        // Title
-        title: page.properties.Eventname?.title?.[0]?.plain_text ?? "",
+        // ✅ Title
+        title:
+          page.properties.name?.title?.[0]?.plain_text ?? "",
 
-        // Description
+        // ✅ Description
         desc: description,
 
-        // Region
-        region: page.properties.Region?.select?.name ?? "",
+        // ✅ Region
+        region:
+          page.properties.region?.select?.name ?? "",
 
-        // External link
-        url: page.properties["super:Link"]?.url ?? "",
+        // ✅ External link
+        url:
+          page.properties.url?.url ?? "",
 
-        // Image
+        // ✅ Image
         image,
 
-        // Date
+        // ✅ Event date
         date: {
           start:
             page.properties["Event Date"]?.date?.start ??
             null
         },
 
-        // Optional flags
+        // Optional
         featured:
           page.properties.Featured?.checkbox ?? false
       };
