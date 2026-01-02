@@ -1,8 +1,28 @@
 import { Client } from "@notionhq/client";
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET");
+  const origin = req.headers.origin;
+
+  // Erlaubte Origins:
+  // - aiaustria.com + alle Subdomains
+  // - squarespace.com + alle Subdomains (für Editor / Staging)
+  const allowedOrigins = [
+    /^https:\/\/([a-z0-9-]+\.)*aiaustria\.com$/,
+    /^https:\/\/([a-z0-9-]+\.)*squarespace\.com$/
+  ];
+
+  if (origin && allowedOrigins.some(rx => rx.test(origin))) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Vary", "Origin");
+  }
+
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  // Preflight (wichtig für Browser!)
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
 
   try {
     const notion = new Client({
