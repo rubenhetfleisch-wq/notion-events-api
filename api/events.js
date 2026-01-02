@@ -30,9 +30,9 @@ export default async function handler(req, res) {
       region: page.properties.Region?.select?.name ?? "",
       url: page.properties.URL?.url ?? "",
       image:
-        page.cover?.external?.url ||
-        page.cover?.file?.url ||
-        null,
+        page.properties["Thumbnail image"]?.files?.[0]?.file?.url ||
+        page.properties["Thumbnail image"]?.files?.[0]?.external?.url ||
+        null
       date: {
         start: page.properties.Date?.date?.start ?? null
       }
