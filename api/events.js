@@ -1,7 +1,7 @@
 import { Client } from "@notionhq/client";
 
 export default async function handler(req, res) {
-  // 🔓 ALLES ERLAUBEN
+  // 🔓 Public Read API
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -24,19 +24,43 @@ export default async function handler(req, res) {
       sorts: [{ property: "Date", direction: "ascending" }]
     });
 
-    const items = response.results.map(page => ({
-      title: page.properties.Title?.title?.[0]?.plain_text ?? "",
-      desc: page.properties.Description?.rich_text?.[0]?.plain_text ?? "",
-      region: page.properties.Region?.select?.name ?? "",
-      url: page.properties.URL?.url ?? "",
-      image:
-        page.properties["Thumbnail image"]?.files?.[0]?.file?.url ||
-        page.properties["Thumbnail image"]?.files?.[0]?.external?.url ||
-        null
-      date: {
-        start: page.properties.Date?.date?.start ?? null
-      }
-    }));
+    const items = response.results.map(page => {
+      // --- IMAGE (Files & media, robust) ---
+      const thumbnailFiles =
+        page.properties["Thumbnail image"]?.files ?? [];
+
+      const image =
+        thumbnailFiles.length > 0
+          ? thumbnailFiles[0].type === "file"
+            ? thumbnailFiles[0].file?.url
+            : thumbnailFiles[0].external?.url
+          : null;
+
+      return {
+        // ✅ Title Property heißt "Name"
+        title: page.properties.Name?.title?.[0]?.plain_text ?? "",
+
+        // ✅ Description
+        desc:
+          page.properties.Description?.rich_text
+            ?.map(t => t.plain_text)
+            .join("") ?? "",
+
+        // ✅ Region Select
+        region: page.properties.Region?.select?.name ?? "",
+
+        // ✅ URL Property heißt "super:Link"
+        url: page.properties["super:Link"]?.url ?? "",
+
+        // ✅ Image aus "Thumbnail image"
+        image,
+
+        // ✅ Date
+        date: {
+          start: page.properties.Date?.date?.start ?? null
+        }
+      };
+    });
 
     return res.status(200).json({ items });
   } catch (err) {
