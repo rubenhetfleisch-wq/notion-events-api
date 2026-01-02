@@ -1,37 +1,15 @@
 import { Client } from "@notionhq/client";
 
 export default async function handler(req, res) {
-  const origin = req.headers.origin;
-
-  // 👉 ALLE Squarespace + AI Austria Origins erlauben
-  const allowedOrigins = [
-    "https://flute-tortoise-zaj3.squarespace.com", // DEIN AKTUELLER EDITOR
-    /^https:\/\/([a-z0-9-]+\.)*aiaustria\.com$/,
-    /^https:\/\/([a-z0-9-]+\.)*squarespace\.com$/,
-    /^https:\/\/static\d+\.squarespace\.com$/
-  ];
-
-  const isAllowed =
-    origin &&
-    allowedOrigins.some(o =>
-      typeof o === "string" ? o === origin : o.test(origin)
-    );
-
-  if (isAllowed) {
-    res.setHeader("Access-Control-Allow-Origin", origin);
-  }
-
-  // 👉 DIESE HEADER MÜSSEN IMMER GESETZT SEIN
+  // 🔓 ALLES ERLAUBEN
+  res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Vary", "Origin");
 
-  // 👉 PRE-FLIGHT MUSS IMMER DURCHGELASSEN WERDEN
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
-  // ❗ AB HIER ERST BUSINESS-LOGIK
   try {
     const notion = new Client({
       auth: process.env.NOTION_TOKEN
