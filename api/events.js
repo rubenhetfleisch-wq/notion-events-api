@@ -3,27 +3,35 @@ import { Client } from "@notionhq/client";
 export default async function handler(req, res) {
   const origin = req.headers.origin;
 
-  // Erlaubte Origins:
-  // - aiaustria.com + alle Subdomains
-  // - squarespace.com + alle Subdomains (für Editor / Staging)
+  // 👉 ALLE Squarespace + AI Austria Origins erlauben
   const allowedOrigins = [
+    "https://flute-tortoise-zaj3.squarespace.com", // DEIN AKTUELLER EDITOR
     /^https:\/\/([a-z0-9-]+\.)*aiaustria\.com$/,
-    /^https:\/\/([a-z0-9-]+\.)*squarespace\.com$/
+    /^https:\/\/([a-z0-9-]+\.)*squarespace\.com$/,
+    /^https:\/\/static\d+\.squarespace\.com$/
   ];
 
-  if (origin && allowedOrigins.some(rx => rx.test(origin))) {
+  const isAllowed =
+    origin &&
+    allowedOrigins.some(o =>
+      typeof o === "string" ? o === origin : o.test(origin)
+    );
+
+  if (isAllowed) {
     res.setHeader("Access-Control-Allow-Origin", origin);
-    res.setHeader("Vary", "Origin");
   }
 
+  // 👉 DIESE HEADER MÜSSEN IMMER GESETZT SEIN
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Vary", "Origin");
 
-  // Preflight (wichtig für Browser!)
+  // 👉 PRE-FLIGHT MUSS IMMER DURCHGELASSEN WERDEN
   if (req.method === "OPTIONS") {
     return res.status(200).end();
   }
 
+  // ❗ AB HIER ERST BUSINESS-LOGIK
   try {
     const notion = new Client({
       auth: process.env.NOTION_TOKEN
@@ -35,9 +43,7 @@ export default async function handler(req, res) {
         property: "Published",
         checkbox: { equals: true }
       },
-      sorts: [
-        { property: "Date", direction: "ascending" }
-      ]
+      sorts: [{ property: "Date", direction: "ascending" }]
     });
 
     const items = response.results.map(page => ({
@@ -54,9 +60,8 @@ export default async function handler(req, res) {
       }
     }));
 
-    res.status(200).json({ items });
-
+    return res.status(200).json({ items });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 }
