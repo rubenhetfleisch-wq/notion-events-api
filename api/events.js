@@ -51,7 +51,7 @@ export default async function handler(req, res) {
 
       return {
         // Title
-        title: page.properties.Name?.title?.[0]?.plain_text ?? "",
+        title: page.properties.Eventname?.title?.[0]?.plain_text ?? "",
 
         // Description
         desc: description,
