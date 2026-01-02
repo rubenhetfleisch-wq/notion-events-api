@@ -1,7 +1,7 @@
 import { Client } from "@notionhq/client";
 
 export default async function handler(req, res) {
-  // 🔓 Public Read API
+  // Public read API
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -21,44 +21,60 @@ export default async function handler(req, res) {
         property: "Published",
         checkbox: { equals: true }
       },
-      sorts: [{ property: "Date", direction: "ascending" }]
+      sorts: [
+        { property: "Event Date", direction: "ascending" }
+      ]
     });
 
     const items = response.results.map(page => {
-      // --- IMAGE (Files & media, robust) ---
-      const thumbnailFiles =
+      /* ---------- THUMBNAIL IMAGE ---------- */
+      const files =
         page.properties["Thumbnail image"]?.files ?? [];
 
-      const image =
-        thumbnailFiles.length > 0
-          ? thumbnailFiles[0].type === "file"
-            ? thumbnailFiles[0].file?.url
-            : thumbnailFiles[0].external?.url
-          : null;
+      let image = null;
+      for (const f of files) {
+        if (f.type === "file" && f.file?.url) {
+          image = f.file.url;
+          break;
+        }
+        if (f.type === "external" && f.external?.url) {
+          image = f.external.url;
+          break;
+        }
+      }
+
+      /* ---------- DESCRIPTION (FULL TEXT) ---------- */
+      const description =
+        page.properties.Description?.rich_text
+          ?.map(t => t.plain_text)
+          .join("") ?? "";
 
       return {
-        // ✅ Title Property heißt "Name"
+        // Title
         title: page.properties.Name?.title?.[0]?.plain_text ?? "",
 
-        // ✅ Description
-        desc:
-          page.properties.Description?.rich_text
-            ?.map(t => t.plain_text)
-            .join("") ?? "",
+        // Description
+        desc: description,
 
-        // ✅ Region Select
+        // Region
         region: page.properties.Region?.select?.name ?? "",
 
-        // ✅ URL Property heißt "super:Link"
+        // External link
         url: page.properties["super:Link"]?.url ?? "",
 
-        // ✅ Image aus "Thumbnail image"
+        // Image
         image,
 
-        // ✅ Date
+        // Date
         date: {
-          start: page.properties.Date?.date?.start ?? null
-        }
+          start:
+            page.properties["Event Date"]?.date?.start ??
+            null
+        },
+
+        // Optional flags
+        featured:
+          page.properties.Featured?.checkbox ?? false
       };
     });
 
