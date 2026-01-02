@@ -10,7 +10,7 @@ export default async function handler(req, res) {
     });
 
     const response = await notion.databases.query({
-      database_id: process.env.NOTION_DB_ID,
+      database_id: process.env.88a5b311c9b14b738b59d55100fa2f60,
       filter: {
         property: "Published",
         checkbox: { equals: true }
