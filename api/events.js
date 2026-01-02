@@ -22,7 +22,7 @@ export default async function handler(req, res) {
         checkbox: { equals: true }
       },
       sorts: [
-        { property: "Event Date", direction: "ascending" }
+        { property: "Date", direction: "ascending" }
       ]
     });
 
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
         // ✅ Event date
         date: {
           start:
-            page.properties["Event Date"]?.date?.start ??
+            page.properties["Date"]?.date?.start ??
             null
         },
 
